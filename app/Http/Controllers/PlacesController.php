@@ -4,52 +4,83 @@ namespace App\Http\Controllers;
 
 use App\Transformers\CheckinTransformer;
 use App\Transformers\PlaceTransformer;
-use App\Place;
 use League\Fractal\Manager;
 use League\Fractal\Resource\Collection;
+use Illuminate\Http\Request;
+use League\Fractal\Resource\Item;
+use App\Place;
 
 class PlacesController extends ApiController {
 
-//
-//    public function index(Manager $fractal, ProjectTransformer $projectTransformer)
-//    {
-//        $projects = $this->project->with(['notes.links'])->get();
-//        $collection = new Collection($projects, $projectTransformer);
-//        $data = $fractal->createData($collection)->toArray();
-//        return $this->respondWithCORS($data);
-//    }
+    protected $place;
 
+    function __construct(Place $place)
+    {
+        $this->place = $place;
+    }
 
     public function index(Manager $fractal, PlaceTransformer $placeTransformer)
     {
-        $places = Place::take(10)->get();
+        $places = $this->place->take(10)->get();
         $collection = new Collection($places, $placeTransformer);
         $data = $fractal->createData($collection)->toArray();
         return $this->respondWithCORS($data);
-
-        //return $this->respondWithCollection($places, new PlaceTransformer);
     }
 
-    public function show($placeId)
+    public function store(Request $request)
     {
-        $place = Place::find($placeId);
-
-        if (! $place) {
-            return $this->errorNotFound('Place not found');
-        }
-
-        return $this->respondWithItem($place, new PlaceTransformer);
+        //$this->validate($request, $this->validationRules);
+        $this->place->name = $request->get('name');
+        $this->place->lat = $request->get('lat');
+        $this->place->lon = $request->get('lon');
+        $this->place->address1 = $request->get('address1');
+        $this->place->address2 = $request->get('address2');
+        $this->place->city = $request->get('city');
+        $this->place->state = $request->get('state');
+        $this->place->zip = $request->get('zip');
+        $this->place->website = $request->get('website');
+        $this->place->phone = $request->get('phone');
+        $this->place->save();
+        return $this->respondCreated('Project was created');
     }
 
-    public function getCheckins($placeId)
+    /**
+     * @param Manager $fractal
+     * @param PlaceTransformer $placeTransformer
+     * @param $placeId
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function show(Manager $fractal, PlaceTransformer $placeTransformer, $placeId)
     {
-        $place = Place::find($placeId);
+        $place = $this->place->find($placeId);
+        $item = new Item($place, $placeTransformer);
+        $data = $fractal->createData($item)->toArray();
+        return $this->respond($data);
+    }
 
-        if (! $place) {
-            return $this->errorNotFound('Place not found');
-        }
+    /**
+     * @param $placeId
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function destroy($placeId)
+    {
+        $place = $this->place->findOrFail($placeId);
+        $place->delete();
+        return $this->respondOk('Place was deleted');
+    }
 
-        return $this->respondWithCollection($place->checkins, new CheckinTransformer);
+    /**
+     * @param Manager $fractal
+     * @param PlaceTransformer $placeTransformer
+     * @param $placeId
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getCheckins(Manager $fractal, PlaceTransformer $placeTransformer, $placeId)
+    {
+        $place = $this->place->with(['checkins'])->get();
+        $collection = new Collection($place, $placeTransformer);
+        $data = $fractal->createData($collection)->toArray();
+        return $this->respond($data);
     }
 
 }

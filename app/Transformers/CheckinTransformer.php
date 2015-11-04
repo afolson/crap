@@ -2,7 +2,7 @@
 
 namespace App\Transformers;
 
-use Checkin;
+use App\Checkin;
 use Log;
 
 use League\Fractal\TransformerAbstract;
